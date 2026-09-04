@@ -1,14 +1,14 @@
 import Navbar from "./layout/Navbar";
+import { Hero } from "./sections/Hero"
+import { Catalogue } from "./sections/Catalogue"
 
 function App() {
   return (
     <div className="min-h-screen bg-[#141414]">
-      <Navbar />
-
-      {/* Your page content */}
-      <main className="pt-[70px]">
-        <div className='mt-10, mb-10'>
-        </div>
+      <Navbar/>
+      <main>
+        <Hero/>
+        <Catalogue/>
       </main>
     </div>
   );
