@@ -16,7 +16,7 @@ export default function Navbar() {
       <div className="flex h-full items-center px-[4%]">
             {/* Logo goes here */}
             <div className="mr-10 shrink-0">
-                <span className="font-sans text-[26px] font-black tracking-[-1.5px] text-[#e50914]">
+                <span className="cursor-default font-sans text-[26px] font-black tracking-[-1.5px] text-[#e50914]">
                     LOGO
                 </span>
             </div>
@@ -43,7 +43,7 @@ export default function Navbar() {
             {/* Search */}
             <button
                 aria-label="Search"
-                className="transition-opacity hover:opacity-70"
+                className="cursor-pointer transition-opacity hover:opacity-70"
             >
                 <Search size={23} strokeWidth={2} />
           </button>
