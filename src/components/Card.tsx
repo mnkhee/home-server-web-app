@@ -1,4 +1,3 @@
-import { createPortal } from "react-dom";
 import placeholder from "../assets/placeholder.png";
 import { Play, Plus} from "lucide-react";
 

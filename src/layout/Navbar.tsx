@@ -1,7 +1,5 @@
 import { useState } from "react";
 import {
-  Bell,
-  ChevronDown,
   Search,
   X,
 } from "lucide-react";
