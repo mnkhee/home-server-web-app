@@ -1,5 +1,11 @@
-import { useRef } from "react";
-import placeholder from "../assets/placeholder.png";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+import {
+  Card,
+  HoverPreview,
+  type HoveredCard,
+} from "../components/Card.tsx";
 
 type Category = {
   title: string;
@@ -70,7 +76,10 @@ export const Catalogue = () => {
   return (
     <section className="relative z-10 -mt-24 bg-transparent pl-[4%] pb-16">
       {categories.map((category) => (
-        <MovieRow key={category.title} category={category} />
+        <MovieRow
+          key={category.title}
+          category={category}
+        />
       ))}
     </section>
   );
@@ -83,6 +92,37 @@ type MovieRowProps = {
 const MovieRow = ({ category }: MovieRowProps) => {
   const rowRef = useRef<HTMLDivElement | null>(null);
 
+  const [hoveredCard, setHoveredCard] =
+    useState<HoveredCard | null>(null);
+
+  const closeTimeout = useRef<
+    ReturnType<typeof setTimeout> | null
+  >(null);
+
+  const showTimeout = useRef<
+    ReturnType<typeof setTimeout> | null
+  >(null);
+
+  const hoveredMovie = useRef<string | null>(null);
+
+  /*
+   * Cancel all hover timers.
+   */
+  const cancelAllTimers = () => {
+    if (showTimeout.current) {
+      clearTimeout(showTimeout.current);
+      showTimeout.current = null;
+    }
+
+    if (closeTimeout.current) {
+      clearTimeout(closeTimeout.current);
+      closeTimeout.current = null;
+    }
+  };
+
+  /*
+   * Calculate how far the row should scroll.
+   */
   const getScrollAmount = (): number => {
     const row = rowRef.current;
 
@@ -90,24 +130,35 @@ const MovieRow = ({ category }: MovieRowProps) => {
       return 0;
     }
 
-    const firstCard = row.querySelector<HTMLElement>("[data-movie-card]");
+    const firstCard =
+      row.querySelector<HTMLElement>(
+        "[data-movie-card]",
+      );
 
     if (!firstCard) {
       return 0;
     }
 
-    const cardWidth = firstCard.getBoundingClientRect().width;
+    const cardWidth =
+      firstCard.getBoundingClientRect().width;
+
     const gap = 8;
 
     return (cardWidth + gap) * 6;
   };
 
-  const scrollNext = (): void => {
+  /*
+   * Scroll right.
+   */
+  const scrollNext = () => {
     const row = rowRef.current;
 
     if (!row) {
       return;
     }
+
+    cancelAllTimers();
+    setHoveredCard(null);
 
     row.scrollBy({
       left: getScrollAmount(),
@@ -115,18 +166,124 @@ const MovieRow = ({ category }: MovieRowProps) => {
     });
   };
 
-  const scrollPrevious = (): void => {
+  /*
+   * Scroll left.
+   */
+  const scrollPrevious = () => {
     const row = rowRef.current;
 
     if (!row) {
       return;
     }
 
+    cancelAllTimers();
+    setHoveredCard(null);
+
     row.scrollBy({
       left: -getScrollAmount(),
       behavior: "smooth",
     });
   };
+
+  /*
+   * Movie card hover starts.
+   */
+  const handleMouseEnter = (
+    movie: string,
+    element: HTMLElement,
+  ) => {
+    cancelAllTimers();
+
+    hoveredMovie.current = movie;
+
+    const rect = element.getBoundingClientRect();
+
+    showTimeout.current = setTimeout(() => {
+      if (hoveredMovie.current !== movie) {
+        return;
+      }
+
+      setHoveredCard({
+        movie,
+        rect,
+      });
+
+      showTimeout.current = null;
+    }, 500);
+  };
+
+  /*
+   * Movie card hover ends.
+   */
+  const handleMouseLeave = () => {
+    if (showTimeout.current) {
+      clearTimeout(showTimeout.current);
+      showTimeout.current = null;
+    }
+
+    hoveredMovie.current = null;
+
+    closeTimeout.current = setTimeout(() => {
+      setHoveredCard(null);
+      closeTimeout.current = null;
+    }, 120);
+  };
+
+  /*
+   * Cursor enters expanded preview.
+   */
+  const handlePreviewMouseEnter = () => {
+    if (closeTimeout.current) {
+      clearTimeout(closeTimeout.current);
+      closeTimeout.current = null;
+    }
+  };
+
+  /*
+   * Cursor leaves expanded preview.
+   */
+  const handlePreviewMouseLeave = () => {
+    setHoveredCard(null);
+    hoveredMovie.current = null;
+  };
+
+  /*
+   * Close preview when scrolling.
+   */
+  useEffect(() => {
+    if (!hoveredCard) {
+      return;
+    }
+
+    const handleScroll = () => {
+      cancelAllTimers();
+      setHoveredCard(null);
+      hoveredMovie.current = null;
+    };
+
+    window.addEventListener(
+      "scroll",
+      handleScroll,
+      true,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "scroll",
+        handleScroll,
+        true,
+      );
+    };
+  }, [hoveredCard]);
+
+  /*
+   * Clean up timers on unmount.
+   */
+  useEffect(() => {
+    return () => {
+      cancelAllTimers();
+    };
+  }, []);
 
   return (
     <div className="mb-10">
@@ -135,19 +292,28 @@ const MovieRow = ({ category }: MovieRowProps) => {
       </h2>
 
       <div className="group relative">
-        {/* Previous button */}
+        {/* PREVIOUS BUTTON */}
+
         <button
           type="button"
           onClick={scrollPrevious}
           aria-label={`Previous ${category.title}`}
           className="
-            absolute left-0 top-1/2 z-30
-            flex h-30 w-12 -translate-y-1/2
-            items-center justify-center
+            absolute
+            left-0
+            top-1/2
+            z-[100]
+            flex
+            h-30
+            w-12
+            -translate-y-1/2
+            items-center
+            justify-center
             bg-black/60
             text-white
             opacity-0
-            transition-all duration-200
+            transition-all
+            duration-200
             hover:bg-black/80
             group-hover:opacity-100
           "
@@ -168,19 +334,28 @@ const MovieRow = ({ category }: MovieRowProps) => {
           </svg>
         </button>
 
-        {/* Next button */}
+        {/* NEXT BUTTON */}
+
         <button
           type="button"
           onClick={scrollNext}
           aria-label={`Next ${category.title}`}
           className="
-            absolute right-0 top-1/2 z-30
-            flex h-30 w-12 -translate-y-1/2
-            items-center justify-center
+            absolute
+            right-0
+            top-1/2
+            z-[100]
+            flex
+            h-30
+            w-12
+            -translate-y-1/2
+            items-center
+            justify-center
             bg-black/60
             text-white
             opacity-0
-            transition-all duration-200
+            transition-all
+            duration-200
             hover:bg-black/80
             group-hover:opacity-100
           "
@@ -201,11 +376,13 @@ const MovieRow = ({ category }: MovieRowProps) => {
           </svg>
         </button>
 
-        {/* Movie row */}
+        {/* MOVIE ROW */}
+
         <div
           ref={rowRef}
           className="
-            flex gap-2
+            flex
+            gap-2
             overflow-x-auto
             overflow-y-hidden
             pb-4
@@ -213,36 +390,45 @@ const MovieRow = ({ category }: MovieRowProps) => {
           "
         >
           {category.movies.map((movie, index) => (
-            <div
+            <Card
               key={`${category.title}-${index}`}
-              data-movie-card
-              className="
-                group/card relative
-                h-[124px] w-[220px]
-                flex-shrink-0
-                cursor-pointer
-                overflow-hidden
-                rounded-sm
-                transition-transform duration-300
-                hover:z-20
-                hover:scale-105
-                md:h-[150px] md:w-[267px]
-              "
-            >
-              <img
-                src={placeholder}
-                alt={movie}
-                className="h-full w-full object-cover"
-              />
-
-              <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover/card:bg-black/20" />
-            </div>
+              movie={movie}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            />
           ))}
         </div>
 
-        {/* Right fade */}
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-24 bg-gradient-to-l from-[#0b0b0b] to-transparent" />
+        {/* RIGHT SIDE FADE */}
+
+        <div
+          className="
+            pointer-events-none
+            absolute
+            right-0
+            top-0
+            z-[95]
+            h-full
+            w-24
+            bg-gradient-to-l
+            from-[#0b0b0b]
+            to-transparent
+          "
+        />
       </div>
+
+      {/* FLOATING PREVIEW */}
+
+      {hoveredCard &&
+        createPortal(
+          <HoverPreview
+            movie={hoveredCard.movie}
+            rect={hoveredCard.rect}
+            onMouseEnter={handlePreviewMouseEnter}
+            onMouseLeave={handlePreviewMouseLeave}
+          />,
+          document.body,
+        )}
     </div>
   );
 };
